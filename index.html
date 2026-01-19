@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coast Fi Calculator</title>
+
+<style>
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 16px;
+    background: #fafafa;
+}
+h1 { text-align:center; }
+
+.section {
+    background:white;
+    padding:16px;
+    margin-bottom:20px;
+    border-radius:14px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.06);
+}
+
+.locked { color:#b00000; }
+.flex { color:#0b6b0b; }
+
+label { margin-top:12px; display:block; font-weight:600; }
+.input-row { display:flex; gap:8px; align-items:center; }
+
+input {
+    flex:1;
+    padding:12px;
+    font-size:1rem;
+    border-radius:10px;
+    border:1px solid #ccc;
+    -moz-appearance:textfield;
+}
+input::-webkit-inner-spin-button,
+input::-webkit-outer-spin-button {
+    -webkit-appearance:none;
+}
+
+.info {
+    width:22px; height:22px;
+    border-radius:50%;
+    background:#e0e0e0;
+    text-align:center;
+    font-weight:bold;
+    line-height:22px;
+    cursor:help;
+}
+
+button {
+    height:52px;
+    border:none;
+    border-radius:12px;
+    font-size:1rem;
+    cursor:pointer;
+}
+button:active { transform:scale(0.98); }
+
+.presets, .buttons { display:flex; gap:12px; margin-top:14px; }
+.presets button, .buttons button { flex:1; }
+
+.btn-calc { background:#2e7d32; color:white; }
+.btn-reset { background:#c62828; color:white; }
+.btn-conservative { background:#c8e6c9; }
+.btn-normal { background:#bbdefb; }
+.btn-optimistic { background:#ffcdd2; }
+
+.result {
+    display:none;
+    background:white;
+    padding:16px;
+    border-radius:14px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.06);
+}
+
+.ok { color:#2e7d32; font-weight:bold; }
+.warn { color:#b00000; font-weight:bold; }
+.small { margin-top:10px; font-size:0.9rem; color:#444; }
+hr { border:none; border-top:1px solid #ddd; margin:12px 0; }
+</style>
+</head>
+
+<body>
+
+<h1>Coast Fi Calculator</h1>
+
+<div class="section">
+<label>Nåværende alder</label>
+<div class="input-row">
+<input id="currentAge" inputmode="numeric">
+<span class="info" title="Alderen du er i dag, i hele år.">i</span>
+</div>
+
+<label>Alder du vil sjekke</label>
+<div class="input-row">
+<input id="targetAge" inputmode="numeric" value="62">
+<span class="info" title="Alderen du ønsker å vurdere COAST FI.">i</span>
+</div>
+</div>
+
+<div class="section locked">
+<h3>Låst kapital (62+)</h3>
+
+<label>IPS – saldo i dag</label>
+<div class="input-row">
+<input id="ipsBalance" inputmode="numeric">
+<span class="info" title="Total verdi i IPS i dag. Kun saldo, ikke fremtidige innskudd.">i</span>
+</div>
+
+<label>Årlig NAV-pensjon (etter skatt)</label>
+<div class="input-row">
+<input id="navPension" inputmode="numeric">
+<span class="info" title="Forventet årlig NAV-pensjon etter skatt. Kan stå tomt.">i</span>
+</div>
+</div>
+
+<div class="section flex">
+<h3>Fleksibel kapital</h3>
+
+<label>Fond og aksjer</label>
+<div class="input-row">
+<input id="freeCapital" inputmode="numeric">
+<span class="info" title="Fond, ASK og enkeltaksjer i dag. Ikke bank eller IPS.">i</span>
+</div>
+
+<label>Langsiktig bankinnskudd</label>
+<div class="input-row">
+<input id="bankSavings" inputmode="numeric">
+<span class="info" title="Langsiktig sparing. Ikke buffer.">i</span>
+</div>
+</div>
+
+<div class="section">
+<label>Ønsket årlig forbruk (etter skatt)</label>
+<div class="input-row">
+<input id="annualSpendingNet" inputmode="numeric" value="400000">
+<span class="info" title="Årlig forbruk i pensjon, etter skatt, i dagens kroner.">i</span>
+</div>
+
+<label>Skatt på fri kapital (%)</label>
+<div class="input-row">
+<input id="capitalTax" inputmode="numeric" value="37.8">
+<span class="info" title="Effektiv skatt på uttak fra fond og aksjer.">i</span>
+</div>
+
+<label>Forventet realavkastning (%)</label>
+<div class="input-row">
+<input id="returnRate" inputmode="numeric" value="5">
+<span class="info" title="Forventet avkastning etter inflasjon.">i</span>
+</div>
+
+<div class="presets">
+<button class="btn-conservative" onclick="setReturn(3)">Konservativ</button>
+<button class="btn-normal" onclick="setReturn(5)">Normal</button>
+<button class="btn-optimistic" onclick="setReturn(7)">Optimistisk</button>
+</div>
+
+<label>Uttaksrate (%)</label>
+<div class="input-row">
+<input id="withdrawRate" inputmode="numeric" value="4">
+<span class="info" title="Årlig uttak som andel av kapitalen.">i</span>
+</div>
+</div>
+
+<div class="buttons">
+<button class="btn-calc" onclick="calculate()">Beregn</button>
+<button class="btn-reset" onclick="resetForm()">Nullstill</button>
+</div>
+
+<div class="result" id="result"></div>
+
+<script>
+const fields=[
+ "currentAge","targetAge","ipsBalance","navPension",
+ "freeCapital","bankSavings","annualSpendingNet",
+ "capitalTax","returnRate","withdrawRate"
+];
+
+fields.forEach(id=>{
+ const v=localStorage.getItem(id);
+ if(v!==null) document.getElementById(id).value=v;
+});
+
+const saved=localStorage.getItem("result");
+if(saved){
+ document.getElementById("result").innerHTML=saved;
+ document.getElementById("result").style.display="block";
+}
+
+function num(id){
+ const v=document.getElementById(id).value;
+ return v===""?0:Number(v);
+}
+
+function setReturn(v){
+ document.getElementById("returnRate").value=v;
+}
+
+function calculate(){
+ fields.forEach(id=>localStorage.setItem(id,document.getElementById(id).value));
+
+ const age=num("currentAge"), target=num("targetAge");
+ const years=target-age;
+ if(!age||years<=0) return alert("Sjekk alder.");
+
+ const ips=num("ipsBalance");
+ const nav=num("navPension");
+ const free=num("freeCapital")+num("bankSavings");
+ const spend=num("annualSpendingNet");
+ const tax=num("capitalTax")/100;
+ const r=num("returnRate")/100;
+ const w=num("withdrawRate")/100;
+
+ const spendAfterNav=Math.max(spend-nav,0);
+ const need=(spendAfterNav/(1-tax))/w;
+ const future=(ips+free)*Math.pow(1+r,years);
+ const diff=future-need;
+
+ let yearsToCoast=null;
+ for(let i=0;i<=80;i++){
+   const cap=(ips+free)*Math.pow(1+r,i);
+   if(cap>=need){ yearsToCoast=i; break; }
+ }
+
+ let explanation="";
+ if(future>=need){
+   if(yearsToCoast===0){
+     explanation=`
+     Du er allerede COAST FI i dag. Det betyr at dersom du slutter å spare helt nå,
+     vil kapitalen du har være tilstrekkelig til å dekke ønsket forbruk fra valgt alder.
+
+     <br><br>
+     Du har en margin på ca.
+     <strong>${Math.round(diff).toLocaleString()} kr</strong> i dagens kroner.
+     Denne marginen gir ekstra trygghet dersom avkastningen blir lavere enn forventet,
+     eller rom for høyere forbruk i pensjon.
+     `;
+   } else {
+     explanation=`
+     Med dagens kapital og forutsetninger vil investeringene vokse tilstrekkelig
+     til å dekke ønsket forbruk.
+
+     <br><br>
+     Du når COAST FI om ca.
+     <strong>${yearsToCoast} år</strong>, rundt
+     <strong>${age+yearsToCoast} års alder</strong>.
+     Fra dette tidspunktet kan du i praksis slutte å spare helt og likevel nå målet ditt.
+
+     <br><br>
+     Ved valgt alder har du en forventet margin på ca.
+     <strong>${Math.round(diff).toLocaleString()} kr</strong>.
+     `;
+   }
+ } else {
+   if(yearsToCoast && yearsToCoast<=years+5){
+     explanation=`
+     Med dagens forutsetninger mangler du ca.
+     <strong>${Math.round(-diff).toLocaleString()} kr</strong>
+     i kapital ved valgt alder for å dekke ønsket forbruk.
+
+     <br><br>
+     Dette tilsvarer omtrent
+     <strong>${Math.round((-diff)/Math.pow(1+r,years)).toLocaleString()} kr</strong>
+     investert i dag, gitt samme forventede realavkastning.
+
+     <br><br>
+     Du er relativt nær målet, og mindre justeringer i forbruk,
+     tidshorisont eller startkapital kan være tilstrekkelig for å nå COAST FI.
+     `;
+   } else {
+     explanation=`
+     Med dagens startkapital og forutsetninger vil investeringene ikke vokse nok
+     til å dekke ønsket forbruk innen valgt alder.
+
+     <br><br>
+     Du mangler ca.
+     <strong>${Math.round(-diff).toLocaleString()} kr</strong>
+     i kapital ved valgt alder, tilsvarende omtrent
+     <strong>${Math.round((-diff)/Math.pow(1+r,years)).toLocaleString()} kr</strong>
+     investert i dag.
+
+     <br><br>
+     Dette indikerer at målet ligger langt unna med nåværende forbruk og tidshorisont.
+     For å nærme deg COAST FI må enten startkapitalen økes betydelig,
+     forventet forbruk reduseres, eller tidshorisonten forlenges.
+     `;
+   }
+ }
+
+ const html=`
+ <strong>Status:</strong>
+ <span class="${future>=need?"ok":"warn"}">
+ ${future>=need?"COAST FI":"Ikke COAST FI"}
+ </span>
+ <hr>
+ Total kapital ved ${target}: <strong>${Math.round(future).toLocaleString()} kr</strong><br>
+ Kapitalbehov: <strong>${Math.round(need).toLocaleString()} kr</strong>
+ <div class="small">${explanation}</div>
+ `;
+
+ localStorage.setItem("result",html);
+ const res=document.getElementById("result");
+ res.innerHTML=html;
+ res.style.display="block";
+}
+
+function resetForm(){
+ localStorage.clear();
+ location.reload();
+}
+</script>
+
+</body>
+</html>

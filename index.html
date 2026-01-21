@@ -124,6 +124,11 @@ hr { border:none; border-top:1px solid #ddd; margin:12px 0; }
     background: #2e7d32;
     color: white;
 }
+
+/* iOS touch spacer – hindrer Safari i å stjele første trykk */
+.bottom-spacer {
+    height: 80px;
+}
 </style>
 </head>
 
@@ -322,6 +327,8 @@ window.onload=function(){
  }
 };
 </script>
+
+<div class="bottom-spacer"></div>
 
 </body>
 </html>
